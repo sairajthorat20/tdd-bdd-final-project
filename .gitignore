@@ -99,7 +99,14 @@ celerybeat-schedule
 
 # virtualenv
 venv/
+.venv/
 ENV/
+
+# pytest cache and local databases
+.pytest_cache/
+*.db
+*.sqlite
+
 
 # Spyder project settings
 .spyderproject

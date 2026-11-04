@@ -6,7 +6,7 @@ from selenium import webdriver
 
 WAIT_SECONDS = int(getenv('WAIT_SECONDS', '30'))
 BASE_URL = getenv('BASE_URL', 'http://localhost:8080')
-DRIVER = getenv('DRIVER', 'firefox').lower()
+DRIVER = getenv('DRIVER', 'chrome').lower()
 
 
 def before_all(context):
@@ -35,6 +35,8 @@ def get_chrome():
     options = webdriver.ChromeOptions()
     options.add_argument("--no-sandbox")
     options.add_argument("--headless")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--window-size=1280,1024")
     return webdriver.Chrome(options=options)
 
 
@@ -42,5 +44,4 @@ def get_firefox():
     """Creates a headless Firefox driver"""
     options = webdriver.FirefoxOptions()
     options.add_argument("--headless")
-    return webdriver.Firefox(options=options)    
-    
+    return webdriver.Firefox(options=options)
