@@ -1,0 +1,217 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: cleanup
+spec:
+  description: This task will clean up a workspace by deleting all files and directories.
+  workspaces:
+    - name: source
+      description: The workspace to clean up
+  steps:
+    - name: remove
+      image: alpine:3
+      workingDir: $(workspaces.source.path)
+      securityContext:
+        runAsNonRoot: false
+        runAsUser: 0
+      script: |
+        #!/bin/sh
+        set -eu
+        echo "Removing all files from $(workspaces.source.path) ..."
+        if [ -d "$(workspaces.source.path)" ] ; then
+          rm -rf "$(workspaces.source.path)"/*
+          rm -rf "$(workspaces.source.path)"/.[!.]*
+        fi
+        echo "Workspace cleaned successfully."
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: git-clone
+spec:
+  description: These Tasks are Git tasks to work with repositories used by other tasks in your Pipeline.
+  workspaces:
+    - name: output
+      description: The git repo will be cloned onto the volume backing this Workspace.
+  params:
+    - name: url
+      description: Repository URL to clone from.
+      type: string
+    - name: revision
+      description: Revision to checkout. (branch, tag, sha, ref, etc...)
+      type: string
+      default: ""
+    - name: submodules
+      description: Initialize and fetch git submodules.
+      type: string
+      default: "true"
+    - name: depth
+      description: Number of commits to fetch for the specified branch.
+      type: string
+      default: "1"
+    - name: sslVerify
+      description: Set the `http.sslVerify` global git config.
+      type: string
+      default: "true"
+    - name: deleteExisting
+      description: Clean out the contents of the repo's destination directory if it already exists before cloning.
+      type: string
+      default: "true"
+  steps:
+    - name: clone
+      image: alpine/git:v2.40.1
+      workingDir: $(workspaces.output.path)
+      script: |
+        #!/bin/sh
+        set -eu
+        CHECKOUT_DIR="$(workspaces.output.path)"
+        if [ "$(params.deleteExisting)" = "true" ] ; then
+          rm -rf "${CHECKOUT_DIR:?}"/*
+          rm -rf "${CHECKOUT_DIR:?}"/.[!.]*
+        fi
+        /usr/bin/git clone --depth "$(params.depth)" "$(params.url)" "$CHECKOUT_DIR"
+        cd "$CHECKOUT_DIR"
+        if [ -n "$(params.revision)" ]; then
+          /usr/bin/git checkout "$(params.revision)"
+        fi
+        if [ "$(params.submodules)" = "true" ]; then
+          /usr/bin/git submodule update --init --recursive
+        fi
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: flake8
+spec:
+  description: This task will run flake8 linter on the provided source code.
+  workspaces:
+    - name: source
+      description: The workspace holding the application source code.
+  params:
+    - name: image
+      description: The container image with flake8.
+      type: string
+      default: "python:3.9-slim"
+    - name: args
+      description: The arguments to pass to flake8.
+      type: array
+      default: ["--count", "--max-complexity=10", "--max-line-length=127", "--statistics"]
+  steps:
+    - name: flake8
+      image: $(params.image)
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/bin/sh
+        set -e
+        python -m pip install --upgrade pip
+        pip install flake8
+        if [ "$#" -eq 0 ]; then
+          flake8 service tests --count --max-complexity=10 --max-line-length=127 --statistics
+        else
+          flake8 "$@" service tests
+        fi
+      args:
+        - $(params.args)
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: nose
+spec:
+  description: This task will run unit tests using nosetests on the provided input.
+  workspaces:
+    - name: source
+      description: The workspace holding the application source code.
+  params:
+    - name: args
+      description: Arguments to pass to nose.
+      type: string
+      default: "-vv --with-spec --spec-color"
+  steps:
+    - name: nosetests
+      image: python:3.9-slim
+      workingDir: $(workspaces.source.path)
+      env:
+        - name: DATABASE_URI
+          value: "sqlite:///test.db"
+      script: |
+        #!/bin/sh
+        set -e
+        python -m pip install --upgrade pip wheel
+        pip install -r requirements.txt
+        nosetests $(params.args)
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: buildah
+spec:
+  description: Buildah task builds source into a container image and pushes it to a container registry.
+  workspaces:
+    - name: source
+      description: The workspace holding the application source code and Dockerfile.
+  params:
+    - name: IMAGE
+      description: Reference of the image buildah will produce.
+      type: string
+    - name: BUILDER_IMAGE
+      description: The image on which builds will run.
+      type: string
+      default: quay.io/buildah/stable:v1.31.0
+    - name: STORAGE_DRIVER
+      description: The storage driver to use for buildah.
+      type: string
+      default: vfs
+    - name: DOCKERFILE
+      description: Path to the Dockerfile to build.
+      type: string
+      default: ./Dockerfile
+    - name: CONTEXT
+      description: Path to the directory to use as context.
+      type: string
+      default: .
+    - name: TLSVERIFY
+      description: Verify the TLS on the registry endpoint.
+      type: string
+      default: "false"
+  steps:
+    - name: build-and-push
+      image: $(params.BUILDER_IMAGE)
+      workingDir: $(workspaces.source.path)
+      securityContext:
+        privileged: true
+      script: |
+        #!/bin/sh
+        set -e
+        buildah --storage-driver=$(params.STORAGE_DRIVER) bud \
+          --no-cache -f $(params.DOCKERFILE) -t $(params.IMAGE) $(params.CONTEXT)
+        buildah --storage-driver=$(params.STORAGE_DRIVER) push \
+          --tls-verify=$(params.TLSVERIFY) $(params.IMAGE) docker://$(params.IMAGE)
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: openshift-client
+spec:
+  description: OpenShift Client task to run OpenShift CLI commands.
+  workspaces:
+    - name: manifest-dir
+      description: The directory containing OpenShift manifests or source.
+      optional: true
+  params:
+    - name: SCRIPT
+      description: The OpenShift CLI script to execute.
+      type: string
+      default: "oc status"
+    - name: VERSION
+      description: The OpenShift client version.
+      type: string
+      default: "latest"
+  steps:
+    - name: oc
+      image: quay.io/openshift/origin-cli:$(params.VERSION)
+      workingDir: $(workspaces.manifest-dir.path)
+      script: |
+        #!/usr/bin/env bash
+        set -e
+        $(params.SCRIPT)

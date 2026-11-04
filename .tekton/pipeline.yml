@@ -1,0 +1,91 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: cd-pipeline
+spec:
+  description: Continuous Delivery Pipeline for Python Product Catalogue API
+  workspaces:
+    - name: pipeline-workspace
+      description: Shared workspace for source code across pipeline tasks
+  params:
+    - name: repo-url
+      description: Git repository URL to clone
+      type: string
+      default: "https://github.com/sairajthorat20/tdd-bdd-final-project.git"
+    - name: branch
+      description: Git branch to checkout
+      type: string
+      default: "main"
+    - name: image-name
+      description: Target container image tag to build and push
+      type: string
+      default: "image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/products:latest"
+  tasks:
+    - name: cleanup
+      taskRef:
+        name: cleanup
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+
+    - name: clone
+      taskRef:
+        name: git-clone
+      runAfter:
+        - cleanup
+      workspaces:
+        - name: output
+          workspace: pipeline-workspace
+      params:
+        - name: url
+          value: $(params.repo-url)
+        - name: revision
+          value: $(params.branch)
+
+    - name: lint
+      taskRef:
+        name: flake8
+      runAfter:
+        - clone
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+
+    - name: tests
+      taskRef:
+        name: nose
+      runAfter:
+        - clone
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+
+    - name: build
+      taskRef:
+        name: buildah
+      runAfter:
+        - lint
+        - tests
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+      params:
+        - name: IMAGE
+          value: $(params.image-name)
+
+    - name: deploy
+      taskRef:
+        name: openshift-client
+      runAfter:
+        - build
+      workspaces:
+        - name: manifest-dir
+          workspace: pipeline-workspace
+      params:
+        - name: SCRIPT
+          value: |
+            echo "Applying deployment for $(params.image-name)..."
+            oc apply -f deploy/ 2>/dev/null || oc create deployment products --image=$(params.image-name) --dry-run=client -o yaml | oc apply -f -
+            oc expose deployment products --port=8080 --target-port=8080 2>/dev/null || true
+            oc rollout restart deployment/products || true
+            oc rollout status deployment/products --timeout=120s || true
