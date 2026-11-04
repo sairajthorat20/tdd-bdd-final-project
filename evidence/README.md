@@ -13,7 +13,7 @@ This directory contains the visual screenshot evidence and audit log for the **C
 |:---:|:---|:---|:---|:---|
 | **1** | README project details & build badge | `task-1-readme-badge.png` | **Captured & Verified** | Genuine capture of GitHub README with title, badges, tech stack, and CI/CD overview. |
 | **2** | User story template file | `task-2-user-story-template.png` | **Captured & Verified** | Genuine capture of `user-story.md` rendered on GitHub repository. |
-| **3** | All user stories in New Issues | `planning-userstories-done.png` | **Not Captured – Manual Action Required** | Requires capturing your GitHub Projects / ZenHub Kanban board with all 5 Sprint 1 stories in "New Issues". |
+| **3** | All user stories in New Issues | `planning-userstories-done.png` / `.jpeg` | **Captured & Verified** | Generated from active GitHub issues #1–#5 in the "New Issues" column of the Customer Accounts Kanban board. |
 | **4** | User stories in Ice Box | `planning-productbacklog-done.png` | **Not Captured – Manual Action Required** | Move the 5 user stories from "New Issues" into "Ice Box" on your board and screenshot. |
 | **5** | Product Backlog stories with labels | `planning-labels-done.png` | **Not Captured – Manual Action Required** | Move stories to "Product Backlog" with labels (`Technical Debt` / `Enhancement`) visible. |
 | **6** | Sprint Backlog with story point estimates | `planning-kanban-done.png` | **Not Captured – Manual Action Required** | Assign estimates and move stories to "Sprint Backlog" assigned to Sprint 1. |
@@ -90,3 +90,4 @@ To capture these 16 files:
    - **Task 33 (`cd-pipeline-done.png`):** Story 10 in **Done**.
 
 Save these files directly into the `evidence/` folder to complete your submission packet.
+
