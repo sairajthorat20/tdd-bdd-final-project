@@ -56,3 +56,4 @@ jobs:
           DATABASE_URI: postgresql://postgres:postgres@postgres:5432/postgres
         run: |
           nosetests -vv --with-spec --spec-color --with-coverage --cover-package=service
+

@@ -62,3 +62,4 @@ Waiting for logs to be available...
 PipelineRun completed successfully: cd-pipeline-run-20261104-9xk42
 Status: Succeeded
 Tasks Completed: 6/6 (cleanup, clone, lint, tests, build, deploy)
+

@@ -37,3 +37,4 @@ Service: accounts
 Application accessibility verified:
   GET http://accounts:8080/health -> 200 OK
   GET http://accounts:8080/ -> 200 OK (Account REST API Service v1.0)
+
