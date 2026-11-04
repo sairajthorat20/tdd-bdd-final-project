@@ -1,4 +1,4 @@
-# Copyright 2016, 2022 John J. Rofrano. All Rights Reserved.
+# Copyright 2016, 2024 John Rofrano. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,50 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pylint: disable=too-few-public-methods
-
 """
 Test Factory to make fake objects for testing
 """
+import datetime
 import factory
-from factory.fuzzy import FuzzyChoice, FuzzyDecimal
-from service.models import Product, Category
+from factory.fuzzy import FuzzyDate
+from service.models import Account
 
 
-class ProductFactory(factory.Factory):
-    """Creates fake products for testing"""
+class AccountFactory(factory.Factory):
+    """Creates fake accounts"""
 
     class Meta:
-        """Maps factory to data model"""
-
-        model = Product
+        """Meta class for factory"""
+        model = Account
 
     id = factory.Sequence(lambda n: n)
-    name = FuzzyChoice(
-        choices=[
-            "Hat",
-            "Pants",
-            "Shirt",
-            "Apple",
-            "Banana",
-            "Pots",
-            "Towels",
-            "Ford",
-            "Chevy",
-            "Hammer",
-            "Wrench",
-        ]
-    )
-    description = factory.Faker("text")
-    price = FuzzyDecimal(0.5, 2000.0, 2)
-    available = FuzzyChoice(choices=[True, False])
-    category = FuzzyChoice(
-        choices=[
-            Category.UNKNOWN,
-            Category.CLOTHS,
-            Category.FOOD,
-            Category.HOUSEWARES,
-            Category.AUTOMOTIVE,
-            Category.TOOLS,
-        ]
-    )
+    name = factory.Faker("name")
+    email = factory.Faker("safe_email")
+    address = factory.Faker("address")
+    phone_number = factory.Faker("phone_number")
+    date_joined = FuzzyDate(datetime.date(2008, 1, 1))

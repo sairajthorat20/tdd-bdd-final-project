@@ -1,0 +1,15 @@
+$ curl -i -X PUT -H "Content-Type: application/json" -d '{"name": "John Doe Updated", "email": "john_updated@example.com", "address": "456 Oak Avenue", "phone_number": "555-9876"}' http://127.0.0.1:8080/accounts/1
+HTTP/1.1 200 OK
+Server: Werkzeug/2.2.3 Python/3.12.10
+Date: Wed, 04 Nov 2026 16:08:56 GMT
+Content-Type: application/json
+Content-Length: 150
+Access-Control-Allow-Origin: *
+Permissions-Policy: browsing-topics=()
+X-Frame-Options: SAMEORIGIN
+X-Content-Type-Options: nosniff
+Content-Security-Policy: default-src 'self'; object-src 'none'
+Referrer-Policy: strict-origin-when-cross-origin
+Connection: close
+
+{"address":"456 Oak Avenue","date_joined":"2026-11-04","email":"john_updated@example.com","id":1,"name":"John Doe Updated","phone_number":"555-9876"}

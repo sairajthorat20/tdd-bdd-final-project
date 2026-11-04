@@ -1,0 +1,22 @@
+$ nosetests -v tests/test_routes.py:TestAccountService.test_security_headers tests/test_routes.py:TestAccountService.test_cors_security
+pytest tests/test_routes.py -k "test_security_headers or test_cors_security" -v
+
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.2.0, pluggy-1.7.0 -- C:\VIT\Coursera\2\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\VIT\Coursera\2
+plugins: Faker-40.44.0, platformdirs-4.14.4, cov-7.1.0
+collecting ... collected 14 items / 12 deselected / 2 selected
+
+tests/test_routes.py::TestAccountService::test_cors_security PASSED      [ 50%]
+tests/test_routes.py::TestAccountService::test_security_headers PASSED   [100%]
+
+=============== 2 passed, 12 deselected in 1.21s ================
+
+Security Headers & CORS Policy Verification Summary:
+- X-Frame-Options: SAMEORIGIN
+- X-Content-Type-Options: nosniff
+- Content-Security-Policy: default-src 'self'; object-src 'none'
+- Referrer-Policy: strict-origin-when-cross-origin
+- Access-Control-Allow-Origin: *
+All security headers and CORS assertions passed successfully.

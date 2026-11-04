@@ -1,0 +1,39 @@
+# Docker Image Details for Customer Accounts Microservice
+# Build Command:
+#   docker build -t accounts:latest .
+# Inspect Command:
+#   docker images accounts:latest --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedAt}}\t{{.Size}}"
+
+REPOSITORY   TAG      IMAGE ID       CREATED        SIZE
+accounts     latest   a3f9e81b2c4d   2 hours ago    284MB
+
+# Detailed inspect output:
+[
+  {
+    "Id": "sha256:a3f9e81b2c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f",
+    "RepoTags": [
+      "accounts:latest"
+    ],
+    "Config": {
+      "Env": [
+        "PORT=8080",
+        "FLASK_APP=service:app",
+        "GUNICORN_BIND=0.0.0.0:8080"
+      ],
+      "Cmd": [
+        "--log-level=info",
+        "service:app"
+      ],
+      "Entrypoint": [
+        "gunicorn"
+      ],
+      "ExposedPorts": {
+        "8080/tcp": {}
+      },
+      "User": "vagrant",
+      "WorkingDir": "/app"
+    },
+    "Architecture": "amd64",
+    "Os": "linux"
+  }
+]

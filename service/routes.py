@@ -1,5 +1,5 @@
 ######################################################################
-# Copyright 2016, 2022 John J. Rofrano. All Rights Reserved.
+# Copyright 2016, 2024 John J. Rofrano. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,12 +14,13 @@
 # limitations under the License.
 ######################################################################
 
-# spell: ignore Rofrano jsonify restx dbname
 """
-Product Store Service with UI
+Account Service
+
+This microservice handles the lifecycle of Accounts
 """
-from flask import jsonify, request, abort, url_for
-from service.models import Product, Category
+from flask import jsonify, request, make_response, abort, url_for
+from service.models import Account
 from service.common import status  # HTTP Status Codes
 from . import app
 
@@ -34,12 +35,114 @@ def healthcheck():
 
 
 ######################################################################
-# H O M E   P A G E
+# GET INDEX
 ######################################################################
 @app.route("/")
 def index():
-    """Base URL for our service"""
-    return app.send_static_file("index.html")
+    """Root URL response"""
+    return (
+        jsonify(
+            name="Account REST API Service",
+            version="1.0",
+            # paths=url_for("list_accounts", _external=True),
+        ),
+        status.HTTP_200_OK,
+    )
+
+
+######################################################################
+# CREATE A NEW ACCOUNT
+######################################################################
+@app.route("/accounts", methods=["POST"])
+def create_accounts():
+    """
+    Creates an Account
+    This endpoint will create an Account based on the data in the body that is posted
+    """
+    app.logger.info("Request to create an Account")
+    check_content_type("application/json")
+    account = Account()
+    account.deserialize(request.get_json())
+    account.create()
+    message = account.serialize()
+    location_url = url_for("get_accounts", account_id=account.id, _external=True)
+    return make_response(
+        jsonify(message), status.HTTP_201_CREATED, {"Location": location_url}
+    )
+
+
+######################################################################
+# LIST ALL ACCOUNTS
+######################################################################
+@app.route("/accounts", methods=["GET"])
+def list_accounts():
+    """
+    List all Accounts
+    This endpoint will list all Accounts
+    """
+    app.logger.info("Request to list all accounts")
+    accounts = Account.all()
+    account_list = [account.serialize() for account in accounts]
+    app.logger.info("Returning [%s] accounts", len(account_list))
+    return jsonify(account_list), status.HTTP_200_OK
+
+
+######################################################################
+# READ AN ACCOUNT
+######################################################################
+@app.route("/accounts/<int:account_id>", methods=["GET"])
+def get_accounts(account_id):
+    """
+    Reads a single Account
+    This endpoint will read an Account based on the id specified in the path
+    """
+    app.logger.info("Request to read an Account with id: %s", account_id)
+    account = Account.find(account_id)
+    if not account:
+        abort(
+            status.HTTP_404_NOT_FOUND,
+            f"Account with id [{account_id}] could not be found.",
+        )
+    return account.serialize(), status.HTTP_200_OK
+
+
+######################################################################
+# UPDATE AN EXISTING ACCOUNT
+######################################################################
+@app.route("/accounts/<int:account_id>", methods=["PUT"])
+def update_accounts(account_id):
+    """
+    Update an Account
+    This endpoint will update an Account based on the posted data
+    """
+    app.logger.info("Request to update an Account with id: %s", account_id)
+    check_content_type("application/json")
+    account = Account.find(account_id)
+    if not account:
+        abort(
+            status.HTTP_404_NOT_FOUND,
+            f"Account with id [{account_id}] could not be found.",
+        )
+    account.deserialize(request.get_json())
+    account.id = account_id
+    account.update()
+    return account.serialize(), status.HTTP_200_OK
+
+
+######################################################################
+# DELETE AN ACCOUNT
+######################################################################
+@app.route("/accounts/<int:account_id>", methods=["DELETE"])
+def delete_accounts(account_id):
+    """
+    Delete an Account
+    This endpoint will delete an Account based on the id specified in the path
+    """
+    app.logger.info("Request to delete an Account with id: %s", account_id)
+    account = Account.find(account_id)
+    if account:
+        account.delete()
+    return "", status.HTTP_204_NO_CONTENT
 
 
 ######################################################################
@@ -62,127 +165,3 @@ def check_content_type(content_type):
         status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
         f"Content-Type must be {content_type}",
     )
-
-
-######################################################################
-# C R E A T E   A   N E W   P R O D U C T
-######################################################################
-@app.route("/products", methods=["POST"])
-def create_products():
-    """
-    Creates a Product
-    This endpoint will create a Product based the data in the body that is posted
-    """
-    app.logger.info("Request to Create a Product...")
-    check_content_type("application/json")
-
-    data = request.get_json()
-    app.logger.info("Processing: %s", data)
-    product = Product()
-    product.deserialize(data)
-    product.create()
-    app.logger.info("Product with new id [%s] saved!", product.id)
-
-    message = product.serialize()
-
-    location_url = url_for("get_products", product_id=product.id, _external=True)
-    return jsonify(message), status.HTTP_201_CREATED, {"Location": location_url}
-
-
-######################################################################
-# L I S T   A L L   P R O D U C T S
-######################################################################
-@app.route("/products", methods=["GET"])
-def list_products():
-    """Returns all of the Products"""
-    app.logger.info("Request to list Products...")
-
-    products = []
-    name = request.args.get("name")
-    category = request.args.get("category")
-    available = request.args.get("available")
-
-    if name:
-        app.logger.info("Find by name: %s", name)
-        products = Product.find_by_name(name)
-    elif category:
-        app.logger.info("Find by category: %s", category)
-        try:
-            category_value = getattr(Category, category.upper())
-            products = Product.find_by_category(category_value)
-        except AttributeError:
-            products = []
-    elif available is not None:
-        app.logger.info("Find by available: %s", available)
-        available_value = available.lower() in ["true", "yes", "1"]
-        products = Product.find_by_availability(available_value)
-    else:
-        app.logger.info("Find all")
-        products = Product.all()
-
-    results = [product.serialize() for product in products]
-    app.logger.info("[%s] Products returned", len(results))
-    return jsonify(results), status.HTTP_200_OK
-
-
-######################################################################
-# R E A D   A   P R O D U C T
-######################################################################
-@app.route("/products/<int:product_id>", methods=["GET"])
-def get_products(product_id):
-    """
-    Retrieve a single Product
-    This endpoint will return a Product based on its id
-    """
-    app.logger.info("Request to Retrieve a product with id [%s]", product_id)
-    product = Product.find(product_id)
-    if not product:
-        abort(
-            status.HTTP_404_NOT_FOUND,
-            f"Product with id '{product_id}' was not found.",
-        )
-    app.logger.info("Returning product: %s", product.name)
-    return jsonify(product.serialize()), status.HTTP_200_OK
-
-
-######################################################################
-# U P D A T E   A   P R O D U C T
-######################################################################
-@app.route("/products/<int:product_id>", methods=["PUT"])
-def update_products(product_id):
-    """
-    Update a Product
-    This endpoint will update a Product based the body that is posted
-    """
-    app.logger.info("Request to Update a product with id [%s]", product_id)
-    check_content_type("application/json")
-
-    product = Product.find(product_id)
-    if not product:
-        abort(
-            status.HTTP_404_NOT_FOUND,
-            f"Product with id '{product_id}' was not found.",
-        )
-
-    product.deserialize(request.get_json())
-    product.id = product_id
-    product.update()
-    app.logger.info("Product with id [%s] updated.", product.id)
-    return jsonify(product.serialize()), status.HTTP_200_OK
-
-
-######################################################################
-# D E L E T E   A   P R O D U C T
-######################################################################
-@app.route("/products/<int:product_id>", methods=["DELETE"])
-def delete_products(product_id):
-    """
-    Delete a Product
-    This endpoint will delete a Product based the id specified in the path
-    """
-    app.logger.info("Request to Delete a product with id [%s]", product_id)
-    product = Product.find(product_id)
-    if product:
-        product.delete()
-    app.logger.info("Product with id [%s] delete complete.", product_id)
-    return "", status.HTTP_204_NO_CONTENT

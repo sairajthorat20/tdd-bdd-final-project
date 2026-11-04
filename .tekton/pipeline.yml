@@ -3,7 +3,7 @@ kind: Pipeline
 metadata:
   name: cd-pipeline
 spec:
-  description: Continuous Delivery Pipeline for Python Product Catalogue API
+  description: Continuous Delivery Pipeline for Customer Accounts Microservice
   workspaces:
     - name: pipeline-workspace
       description: Shared workspace for source code across pipeline tasks
@@ -19,7 +19,7 @@ spec:
     - name: image-name
       description: Target container image tag to build and push
       type: string
-      default: "image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/products:latest"
+      default: "image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/accounts:latest"
   tasks:
     - name: cleanup
       taskRef:
@@ -85,7 +85,7 @@ spec:
         - name: SCRIPT
           value: |
             echo "Applying deployment for $(params.image-name)..."
-            oc apply -f deploy/ 2>/dev/null || oc create deployment products --image=$(params.image-name) --dry-run=client -o yaml | oc apply -f -
-            oc expose deployment products --port=8080 --target-port=8080 2>/dev/null || true
-            oc rollout restart deployment/products || true
-            oc rollout status deployment/products --timeout=120s || true
+            oc apply -f deploy/ 2>/dev/null || oc create deployment accounts --image=$(params.image-name) --dry-run=client -o yaml | oc apply -f -
+            oc expose deployment accounts --port=8080 --target-port=8080 2>/dev/null || true
+            oc rollout restart deployment/accounts || true
+            oc rollout status deployment/accounts --timeout=120s || true

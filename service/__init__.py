@@ -1,5 +1,5 @@
 ######################################################################
-# Copyright 2016, 2022 John J. Rofrano. All Rights Reserved.
+# Copyright 2016, 2024 John J. Rofrano. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,6 +23,8 @@ and SQL database
 """
 import sys
 from flask import Flask
+from flask_talisman import Talisman
+from flask_cors import CORS
 from service import config
 from service.common import log_handlers
 
@@ -30,22 +32,28 @@ from service.common import log_handlers
 # The Flask app must be created
 # BEFORE you import modules that depend on it !!!
 
-# Create the Flask aoo
+# Create the Flask app
 app = Flask(__name__)  # pylint: disable=invalid-name
 
 # Load Configurations
 app.config.from_object(config)
 
+# Initialize Flask-Talisman for Security Headers
+talisman = Talisman(app, force_https=False)
+
+# Initialize Flask-CORS for Cross-Origin Resource Sharing
+cors = CORS(app, send_wildcard=True)
+
 # Dependencies require we import the routes AFTER the Flask app is created
 # pylint: disable=wrong-import-position, wrong-import-order, cyclic-import
-from service import routes, models        # noqa: F401, E402
+from service import routes, models  # noqa: F401, E402
 from service.common import error_handlers, cli_commands  # noqa: F401, E402
 
 # Set up logging for production
 log_handlers.init_logging(app, "gunicorn.error")
 
 app.logger.info(70 * "*")
-app.logger.info("  P E T   S E R V I C E   R U N N I N G  ".center(70, "*"))
+app.logger.info("  A C C O U N T   S E R V I C E   R U N N I N G  ".center(70, "*"))
 app.logger.info(70 * "*")
 
 try:

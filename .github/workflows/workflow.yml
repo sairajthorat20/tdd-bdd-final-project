@@ -8,16 +8,38 @@ on:
 
 jobs:
   build:
+    name: Build and Test
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    container:
+      image: python:3.9-slim
+
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
+      - name: Install system dependencies
+        run: |
+          apt-get update && apt-get install -y --no-install-recommends \
+            gcc \
+            libpq-dev \
+            git
+          rm -rf /var/lib/apt/lists/*
 
       - name: Install dependencies
         run: |
@@ -31,6 +53,6 @@ jobs:
 
       - name: Run unit tests
         env:
-          DATABASE_URI: "sqlite:///test.db"
+          DATABASE_URI: postgresql://postgres:postgres@postgres:5432/postgres
         run: |
           nosetests -vv --with-spec --spec-color --with-coverage --cover-package=service

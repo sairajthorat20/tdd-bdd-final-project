@@ -1,4 +1,4 @@
-# Copyright 2016, 2023 John J. Rofrano. All Rights Reserved.
+# Copyright 2016, 2024 John Rofrano. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,35 +13,31 @@
 # limitations under the License.
 
 """
-Test cases for Product Model
+Test cases for Account Model
 
 Test cases can be run with:
     nosetests
     coverage report -m
-
-While debugging just these tests it's convenient to use this:
-    nosetests --stop tests/test_models.py:TestProductModel
-
 """
+
 import os
 import logging
-import unittest
-from decimal import Decimal
-from service.models import Product, Category, db, DataValidationError
+from unittest import TestCase
+from datetime import date
 from service import app
-from tests.factories import ProductFactory
+from service.models import Account, DataValidationError, db
+from tests.factories import AccountFactory
 
 DATABASE_URI = os.getenv(
-    "DATABASE_URI", "postgresql://postgres:postgres@localhost:5432/postgres"
+    "DATABASE_URI", "sqlite:///test.db"
 )
 
 
 ######################################################################
-#  P R O D U C T   M O D E L   T E S T   C A S E S
+#  A C C O U N T   M O D E L   T E S T   C A S E S
 ######################################################################
-# pylint: disable=too-many-public-methods
-class TestProductModel(unittest.TestCase):
-    """Test Cases for Product Model"""
+class TestAccountModel(TestCase):
+    """Test Cases for Account Model"""
 
     @classmethod
     def setUpClass(cls):
@@ -50,7 +46,7 @@ class TestProductModel(unittest.TestCase):
         app.config["DEBUG"] = False
         app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URI
         app.logger.setLevel(logging.CRITICAL)
-        Product.init_db(app)
+        Account.init_db(app)
 
     @classmethod
     def tearDownClass(cls):
@@ -59,7 +55,7 @@ class TestProductModel(unittest.TestCase):
 
     def setUp(self):
         """This runs before each test"""
-        db.session.query(Product).delete()  # clean up the last tests
+        db.session.query(Account).delete()  # clean up the last tests
         db.session.commit()
 
     def tearDown(self):
@@ -70,190 +66,148 @@ class TestProductModel(unittest.TestCase):
     #  T E S T   C A S E S
     ######################################################################
 
-    def test_create_a_product(self):
-        """It should Create a product and assert that it exists"""
-        product = Product(name="Fedora", description="A red hat", price=12.50, available=True, category=Category.CLOTHS)
-        self.assertEqual(str(product), "<Product Fedora id=[None]>")
-        self.assertTrue(product is not None)
-        self.assertEqual(product.id, None)
-        self.assertEqual(product.name, "Fedora")
-        self.assertEqual(product.description, "A red hat")
-        self.assertEqual(product.available, True)
-        self.assertEqual(product.price, 12.50)
-        self.assertEqual(product.category, Category.CLOTHS)
+    def test_create_an_account(self):
+        """It should Create an Account and assert that it exists"""
+        fake_account = AccountFactory()
+        account = Account(
+            name=fake_account.name,
+            email=fake_account.email,
+            address=fake_account.address,
+            phone_number=fake_account.phone_number,
+            date_joined=fake_account.date_joined,
+        )
+        self.assertIsNotNone(account)
+        self.assertEqual(account.id, None)
+        account.create()
+        self.assertIsNotNone(account.id)
+        self.assertEqual(account.name, fake_account.name)
+        self.assertEqual(account.email, fake_account.email)
+        self.assertEqual(account.address, fake_account.address)
+        self.assertEqual(account.phone_number, fake_account.phone_number)
+        self.assertEqual(account.date_joined, fake_account.date_joined)
 
-    def test_add_a_product(self):
-        """It should Create a product and add it to the database"""
-        products = Product.all()
-        self.assertEqual(products, [])
-        product = ProductFactory()
-        product.id = None
-        product.create()
-        # Assert that it was assigned an id and shows up in the database
-        self.assertIsNotNone(product.id)
-        products = Product.all()
-        self.assertEqual(len(products), 1)
-        # Check that it matches the original product
-        new_product = products[0]
-        self.assertEqual(new_product.name, product.name)
-        self.assertEqual(new_product.description, product.description)
-        self.assertEqual(Decimal(new_product.price), product.price)
-        self.assertEqual(new_product.available, product.available)
-        self.assertEqual(new_product.category, product.category)
+    def test_read_an_account(self):
+        """It should Read an Account"""
+        account = AccountFactory()
+        account.create()
+        found_account = Account.find(account.id)
+        self.assertIsNotNone(found_account)
+        self.assertEqual(found_account.id, account.id)
+        self.assertEqual(found_account.name, account.name)
+        self.assertEqual(found_account.email, account.email)
+        self.assertEqual(found_account.address, account.address)
+        self.assertEqual(found_account.phone_number, account.phone_number)
+        self.assertEqual(found_account.date_joined, account.date_joined)
 
-    def test_read_a_product(self):
-        """It should Read a Product"""
-        product = ProductFactory()
-        product.id = None
-        product.create()
-        self.assertIsNotNone(product.id)
-        # Fetch it back
-        found_product = Product.find(product.id)
-        self.assertEqual(found_product.id, product.id)
-        self.assertEqual(found_product.name, product.name)
-        self.assertEqual(found_product.description, product.description)
-        self.assertEqual(Decimal(found_product.price), product.price)
-        self.assertEqual(found_product.available, product.available)
-        self.assertEqual(found_product.category, product.category)
+    def test_update_an_account(self):
+        """It should Update an Account"""
+        account = AccountFactory()
+        account.create()
+        self.assertIsNotNone(account.id)
+        original_id = account.id
 
-    def test_update_a_product(self):
-        """It should Update a Product"""
-        product = ProductFactory()
-        product.id = None
-        product.create()
-        self.assertIsNotNone(product.id)
-        # Change it and save it
-        product.description = "testing description"
-        original_id = product.id
-        product.update()
-        self.assertEqual(product.id, original_id)
-        self.assertEqual(product.description, "testing description")
-        # Fetch it back and make sure the id hasn't changed but the data did change
-        products = Product.all()
-        self.assertEqual(len(products), 1)
-        self.assertEqual(products[0].id, original_id)
-        self.assertEqual(products[0].description, "testing description")
+        account.name = "Updated Name"
+        account.update()
+        self.assertEqual(account.id, original_id)
+
+        # Fetch it back and verify name change
+        accounts = Account.all()
+        self.assertEqual(len(accounts), 1)
+        self.assertEqual(accounts[0].id, original_id)
+        self.assertEqual(accounts[0].name, "Updated Name")
 
     def test_update_without_id(self):
-        """It should fail to update a Product without an ID"""
-        product = ProductFactory()
-        product.id = None
-        self.assertRaises(DataValidationError, product.update)
+        """It should raise DataValidationError when updating without an id"""
+        account = AccountFactory()
+        account.id = None
+        self.assertRaises(DataValidationError, account.update)
 
-    def test_delete_a_product(self):
-        """It should Delete a Product"""
-        product = ProductFactory()
-        product.id = None
-        product.create()
-        self.assertEqual(len(Product.all()), 1)
-        # delete the product and make sure it isn't in the database
-        product.delete()
-        self.assertEqual(len(Product.all()), 0)
+    def test_delete_an_account(self):
+        """It should Delete an Account"""
+        account = AccountFactory()
+        account.create()
+        self.assertEqual(len(Account.all()), 1)
+        account.delete()
+        self.assertEqual(len(Account.all()), 0)
+        found_account = Account.find(account.id)
+        self.assertIsNone(found_account)
 
-    def test_list_all_products(self):
-        """It should List all Products in the database"""
-        products = Product.all()
-        self.assertEqual(products, [])
-        # Create 5 Products
+    def test_list_all_accounts(self):
+        """It should List all Accounts in the database"""
+        accounts = Account.all()
+        self.assertEqual(accounts, [])
         for _ in range(5):
-            product = ProductFactory()
-            product.id = None
-            product.create()
-        # See if we get back 5 products
-        products = Product.all()
-        self.assertEqual(len(products), 5)
+            account = AccountFactory()
+            account.create()
+        accounts = Account.all()
+        self.assertEqual(len(accounts), 5)
 
     def test_find_by_name(self):
-        """It should Find a Product by Name"""
-        products = ProductFactory.create_batch(5)
-        for product in products:
-            product.id = None
-            product.create()
-        name = products[0].name
-        count = len([product for product in products if product.name == name])
-        found = Product.find_by_name(name)
-        self.assertEqual(found.count(), count)
-        for product in found:
-            self.assertEqual(product.name, name)
+        """It should Find an Account by Name"""
+        accounts = AccountFactory.create_batch(3)
+        for account in accounts:
+            account.create()
+        name = accounts[0].name
+        count = len([account for account in accounts if account.name == name])
+        found = Account.find_by_name(name)
+        self.assertEqual(len(found), count)
+        for account in found:
+            self.assertEqual(account.name, name)
 
-    def test_find_by_availability(self):
-        """It should Find Products by Availability"""
-        products = ProductFactory.create_batch(10)
-        for product in products:
-            product.id = None
-            product.create()
-        available = products[0].available
-        count = len([product for product in products if product.available == available])
-        found = Product.find_by_availability(available)
-        self.assertEqual(found.count(), count)
-        for product in found:
-            self.assertEqual(product.available, available)
+    def test_serialize_an_account(self):
+        """It should serialize an Account"""
+        account = AccountFactory()
+        data = account.serialize()
+        self.assertNotEqual(data, None)
+        self.assertIn("id", data)
+        self.assertEqual(data["id"], account.id)
+        self.assertIn("name", data)
+        self.assertEqual(data["name"], account.name)
+        self.assertIn("email", data)
+        self.assertEqual(data["email"], account.email)
+        self.assertIn("address", data)
+        self.assertEqual(data["address"], account.address)
+        self.assertIn("phone_number", data)
+        self.assertEqual(data["phone_number"], account.phone_number)
+        self.assertIn("date_joined", data)
+        self.assertEqual(data["date_joined"], account.date_joined.isoformat())
 
-    def test_find_by_category(self):
-        """It should Find Products by Category"""
-        products = ProductFactory.create_batch(10)
-        for product in products:
-            product.id = None
-            product.create()
-        category = products[0].category
-        count = len([product for product in products if product.category == category])
-        found = Product.find_by_category(category)
-        self.assertEqual(found.count(), count)
-        for product in found:
-            self.assertEqual(product.category, category)
+    def test_deserialize_an_account(self):
+        """It should deserialize an Account"""
+        data = AccountFactory().serialize()
+        account = Account()
+        account.deserialize(data)
+        self.assertNotEqual(account, None)
+        self.assertEqual(account.id, None)
+        self.assertEqual(account.name, data["name"])
+        self.assertEqual(account.email, data["email"])
+        self.assertEqual(account.address, data["address"])
+        self.assertEqual(account.phone_number, data["phone_number"])
+        self.assertEqual(account.date_joined, date.fromisoformat(data["date_joined"]))
 
-    def test_find_by_price(self):
-        """It should Find Products by Price"""
-        products = ProductFactory.create_batch(10)
-        for product in products:
-            product.id = None
-            product.create()
-        price = products[0].price
-        count = len([product for product in products if product.price == price])
-        found = Product.find_by_price(price)
-        self.assertEqual(found.count(), count)
-        for product in found:
-            self.assertEqual(product.price, price)
+    def test_deserialize_without_date_joined(self):
+        """It should deserialize an Account without date_joined using today's date"""
+        data = AccountFactory().serialize()
+        del data["date_joined"]
+        account = Account()
+        account.deserialize(data)
+        self.assertEqual(account.date_joined, date.today())
 
-    def test_find_by_price_string(self):
-        """It should Find Products by Price passed as string"""
-        product = ProductFactory()
-        product.id = None
-        product.create()
-        found = Product.find_by_price(str(product.price))
-        self.assertGreaterEqual(found.count(), 1)
-        self.assertEqual(found[0].price, product.price)
-
-    def test_deserialize_bad_available(self):
-        """It should not deserialize bad available field"""
-        product = ProductFactory()
-        data = product.serialize()
-        data["available"] = "not a boolean"
-        self.assertRaises(DataValidationError, product.deserialize, data)
-
-    def test_deserialize_bad_category(self):
-        """It should not deserialize bad category field"""
-        product = ProductFactory()
-        data = product.serialize()
-        data["category"] = "INVALID_CATEGORY"
-        self.assertRaises(DataValidationError, product.deserialize, data)
-
-    def test_deserialize_missing_key(self):
-        """It should not deserialize missing key"""
-        product = ProductFactory()
-        data = product.serialize()
-        del data["name"]
-        self.assertRaises(DataValidationError, product.deserialize, data)
+    def test_deserialize_missing_data(self):
+        """It should not deserialize an Account with missing data"""
+        data = {"id": 1, "name": "Foo"}
+        account = Account()
+        self.assertRaises(DataValidationError, account.deserialize, data)
 
     def test_deserialize_bad_data(self):
-        """It should not deserialize non-dict data"""
-        product = ProductFactory()
-        self.assertRaises(DataValidationError, product.deserialize, "not a dictionary")
+        """It should not deserialize bad data"""
+        data = "this is not a dictionary"
+        account = Account()
+        self.assertRaises(DataValidationError, account.deserialize, data)
 
-    def test_deserialize_returns_self(self):
-        """It should return self when deserializing"""
-        product = ProductFactory()
-        data = product.serialize()
-        new_product = Product()
-        result = new_product.deserialize(data)
-        self.assertIs(result, new_product)
+    def test_repr(self):
+        """It should represent an Account as a string"""
+        account = AccountFactory()
+        account.id = 1
+        account.name = "Foo"
+        self.assertEqual(repr(account), "<Account Foo id=[1]>")
